@@ -1,0 +1,17 @@
+{
+  "name": "minerva-client",
+  "version": "0.0.1",
+  "description": "Javascript client for Minerva",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "D.P.W. Russell",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {
+    "amazon-cognito-identity-js": "==2.0.2",
+    "aws-sdk": "^2.279.1",
+    "node-fetch": "^2.2.0"
+  }
+}
