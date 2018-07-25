@@ -88,7 +88,7 @@ class Client {
             if (!response.ok) {
               return response.text()
                 .then(text => {
-                  return Promise.reject('Error' + response.status + ' ('
+                  return Promise.reject('Error ' + response.status + ' ('
                                         + response.statusText + '): ' + text);
                 });
             }
@@ -113,6 +113,30 @@ class Client {
 
   getGroup(uuid) {
     return this.apiFetch('GET', '/group' + uuid, null, null);
+  }
+
+  createMembership(group_uuid, user_uuid, data) {
+    return this.apiFetch('POST', '/membership/' + group_uuid + '/' + user_uuid,
+                         null, data);
+  }
+
+  // Get membership
+  getMembership(group_uuid, user_uuid) {
+    return this.apiFetch('GET', '/membership/' + group_uuid + '/' + user_uuid,
+                         null, null);
+  }
+
+  // Update membership
+  updateMembership(group_uuid, user_uuid, data) {
+    return this.apiFetch('PUT', '/membership/' + group_uuid + '/' + user_uuid,
+                         null, data);
+  }
+
+  // Delete membership
+  deleteMembership(group_uuid, user_uuid) {
+    return this.apiFetch('DELETE',
+                         '/membership/' + group_uuid + '/' + user_uuid, null,
+                         null);
   }
 
   // Create a repository
