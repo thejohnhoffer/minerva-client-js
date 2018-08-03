@@ -4,18 +4,6 @@ const { CognitoUserPool,
          AuthenticationDetails } = require('amazon-cognito-identity-js');
 const AWS = require('aws-sdk');
 
-// Authenticate
-function authenticateUser(cognitoUser, authenticationDetails) {
-  return new Promise((resolve, reject) => {
-    cognitoUser.authenticateUser(authenticationDetails, {
-      onSuccess: result => resolve(result),
-      onFailure: err => reject(err),
-      mfaRequired: codeDeliveryDetails => reject(codeDeliveryDetails),
-      newPasswordRequired: (fields, required) => reject({fields, required})
-    });
-  });
-};
-
 class Client {
   constructor(cognitoUserPoolId, clientId, baseUrl) {
     this.cognitoUserPool = new CognitoUserPool({
@@ -27,6 +15,7 @@ class Client {
 
   authenticate(username, password) {
 
+    // TODO Perhaps cognitoUser should be a class member and reused everywhere?
     const cognitoUser = new CognitoUser({
       Username: username,
       Pool: this.cognitoUserPool
@@ -37,13 +26,116 @@ class Client {
       Password: password
     });
 
-    this._token = authenticateUser(cognitoUser, authenticationDetails)
+    const auth = new Promise((resolve, reject) => {
+        cognitoUser.authenticateUser(authenticationDetails, {
+          onSuccess: result => resolve(result),
+          onFailure: err => reject(err),
+          mfaRequired: codeDeliveryDetails => reject(codeDeliveryDetails),
+          newPasswordRequired: (fields, required) => reject({fields, required})
+        });
+      });
+
+    this._token = auth
       .then(response => response.getIdToken().getJwtToken());
       // Could setCredentials here if that is useful
       // .then(setCredentials);
 
     return this._token;
   }
+
+  completeNewPasswordChallenge(username, oldPassword, newPassword,
+                               userAttributes) {
+    const cognitoUser = new CognitoUser({
+      Username: username,
+      Pool: this.cognitoUserPool
+    });
+
+    const authenticationDetails = new AuthenticationDetails({
+      Username: username,
+      Password: oldPassword
+    });
+
+    const auth =  new Promise((resolve, reject) => {
+      cognitoUser.authenticateUser(authenticationDetails, {
+        onSuccess: result => reject(result),
+        onFailure: err => reject(err),
+        mfaRequired: codeDeliveryDetails => reject(codeDeliveryDetails),
+        newPasswordRequired: (fields, required) => resolve({fields, required})
+      });
+    })
+      .then(({fields, required}) => {
+        return new Promise((resolve, reject) => {
+          cognitoUser.completeNewPasswordChallenge(
+            newPassword,
+            userAttributes,
+            {
+              onSuccess: data => resolve(data),
+              onFailure: err => reject(err)
+            }
+          );
+        });
+      });
+
+    this._token = auth
+      .then(response => response.getIdToken().getJwtToken());
+      // Could setCredentials here if that is useful
+      // .then(setCredentials);
+
+    return this._token;
+  }
+
+  // TODO Test these out
+  // changePassword(username, oldPassword, newPassword) {
+  //   const cognitoUser = new CognitoUser({
+  //     Username: username,
+  //     Pool: this.cognitoUserPool
+  //   });
+  //
+  //   return new Promise((resolve, reject) => {
+  //     cognitoUser.changePassword(
+  //       oldPassword,
+  //       newPassword,
+  //       (err, result) => {
+  //         if (err) {
+  //           reject(err);
+  //         }
+  //         resolve(result);
+  //       }
+  //     );
+  //   });
+  // }
+  //
+  // forgotPassword(username) {
+  //   const cognitoUser = new CognitoUser({
+  //     Username: username,
+  //     Pool: this.cognitoUserPool
+  //   });
+  //
+  //   return new Promise((resolve, reject) => {
+  //     cognitoUser.forgotPassword({
+  //       onSuccess: result => resolve(result),
+  //       onFailure: err => reject(err)
+  //     });
+  //   })
+  // }
+  //
+  // confirmPassword(username, verificationCode, newPassword) {
+  //   const cognitoUser = new CognitoUser({
+  //     Username: username,
+  //     Pool: this.cognitoUserPool
+  //   });
+  //
+  //   return new Promise((resolve, reject) => {
+  //     cognitoUser.confirmPassword(
+  //       verificationCode,
+  //       newPassword,
+  //       {
+  //         onSuccess: resolve(),
+  //         onFailure: reject(err)
+  //       }
+  //     );
+  //   });
+  // }
 
   // Fetch
   apiFetch(method, route, params=null, body=null, accept_png=false) {
