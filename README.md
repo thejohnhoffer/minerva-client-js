@@ -217,3 +217,21 @@ const renderedTile = imageDimensions
       });
   });
 ```
+
+#### Complete New Password Challenge
+If a user is required to change a password on login, this can be used to do so.
+
+```js
+return client.completeNewPasswordChallenge(
+  'username@example.com',
+  'oldPassword'
+  'newPassword',
+  {
+    preferred_username: 'preferredUsername',
+    name: 'Full Name'
+  }
+)
+  .catch(err => {
+    console.error(err);
+  });
+```
