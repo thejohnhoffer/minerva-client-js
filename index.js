@@ -75,36 +75,44 @@ class Client {
           );
         });
       });
+  }
 
-    this._token = auth
-      .then(response => response.getIdToken().getJwtToken());
-      // Could setCredentials here if that is useful
-      // .then(setCredentials);
+  changePassword(username, oldPassword, newPassword) {
+    const cognitoUser = new CognitoUser({
+      Username: username,
+      Pool: this.cognitoUserPool
+    });
 
-    return this._token;
+    const authenticationDetails = new AuthenticationDetails({
+      Username: username,
+      Password: oldPassword
+    });
+
+    const auth =  new Promise((resolve, reject) => {
+      cognitoUser.authenticateUser(authenticationDetails, {
+        onSuccess: result => resolve(result),
+        onFailure: err => reject(err),
+        mfaRequired: codeDeliveryDetails => reject(codeDeliveryDetails),
+        newPasswordRequired: (fields, required) => reject({fields, required})
+      });
+    })
+      .then(() => {
+        return new Promise((resolve, reject) => {
+          cognitoUser.changePassword(
+            oldPassword,
+            newPassword,
+            (err, result) => {
+              if (err) {
+                reject(err);
+              }
+              resolve(result);
+            }
+          );
+        });
+      });
   }
 
   // TODO Test these out
-  // changePassword(username, oldPassword, newPassword) {
-  //   const cognitoUser = new CognitoUser({
-  //     Username: username,
-  //     Pool: this.cognitoUserPool
-  //   });
-  //
-  //   return new Promise((resolve, reject) => {
-  //     cognitoUser.changePassword(
-  //       oldPassword,
-  //       newPassword,
-  //       (err, result) => {
-  //         if (err) {
-  //           reject(err);
-  //         }
-  //         resolve(result);
-  //       }
-  //     );
-  //   });
-  // }
-  //
   // forgotPassword(username) {
   //   const cognitoUser = new CognitoUser({
   //     Username: username,
