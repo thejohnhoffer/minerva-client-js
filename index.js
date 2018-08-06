@@ -55,7 +55,7 @@ class Client {
       Password: oldPassword
     });
 
-    const auth =  new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       cognitoUser.authenticateUser(authenticationDetails, {
         onSuccess: result => reject(result),
         onFailure: err => reject(err),
@@ -88,7 +88,7 @@ class Client {
       Password: oldPassword
     });
 
-    const auth =  new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       cognitoUser.authenticateUser(authenticationDetails, {
         onSuccess: result => resolve(result),
         onFailure: err => reject(err),
