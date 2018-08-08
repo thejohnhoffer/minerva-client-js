@@ -5,6 +5,36 @@ This client library uses Promises.
 
 Example usage:
 
+#### Using fetch in node
+To enable fetch to run on node (as opposed to in the browser):
+
+```js
+global.fetch = require('node-fetch')
+global.navigator = {};
+```
+
+#### Exploratory Utility functions
+```js
+// Utility function to print response and pass it along
+const printRet = label => response => {
+  console.log('=== ' + label + ' ===');
+  console.log(JSON.stringify(response, null, 4));
+  console.log();
+  return response;
+};
+
+// Utility function to print error and exit
+const errExit = label => data => {
+  console.error('EEE ' + label + ' EEE');
+  console.error(data);
+  console.error();
+  process.exit();
+};
+
+// Utility function to get just the data key from a response
+const justData = response => response['data'];
+```
+
 #### Initialise the client
 
 ```js
@@ -22,34 +52,29 @@ const client = new Client(
   'baseUrl'
 );
 
-client.authenticate('username@example.com', 'password');
-```
-
-#### Using fetch in node
-To enable fetch to run on node (as opposed to in the browser):
-
-```js
-global.fetch = require('node-fetch')
-global.navigator = {};
+client.authenticate('username@example.com', 'password')
+  .catch(errExit('Authenticating'));
 ```
 
 #### Create repository/import/etc
+Create a repository and then an import within it. Get credentials to
+upload to the import and upload an example image. Complete the import
+and wait for a BFU within to be marked as complete. Get details of an
+image within that BFU.
 
 ```js
-// Utility function to print results and pass along the data
-const printRet = label => data => {
-  console.log('=== ' + label + ' ===');
-  console.log(data);
-  console.log();
-  return data;
-};
+// Names need to be unique, for this demonstration use a unique ID
+// for each run
+const id = 1;
 
 // Create repository
 const repository = client.createRepository({
   'name': 'Repository' + id,
   'raw_storage': 'Destroy'
 })
-  .then(printRet('Create Repository'));
+  .then(printRet('Create Repository'))
+  .then(justData)
+  .catch(errExit('Create Repository'))
 
 // Create an import
 const import_ = repository
@@ -59,21 +84,26 @@ const import_ = repository
       'repository_uuid': data['uuid']
     });
   })
-  .then(printRet('Create Import'));
+  .then(printRet('Create Import'))
+  .then(justData)
+  .catch(errExit('Create Import'));
 
 // List imports in repository
 Promise.all([repository, import_])
   .then(([data]) => {
     return client.listImportsInRepository(data['uuid']);
   })
-  .then(printRet('List Imports in Repository'));
+  .then(printRet('List Imports in Repository'))
+  .catch(errExit('List Imports in Repository'));
 
 // Get the import credentials
 const importCredentials = import_
   .then(data => {
     return client.getImportCredentials(data['uuid']);
   })
-  .then(printRet('Get Import Credentials'));
+  .then(printRet('Get Import Credentials'))
+  .then(justData)
+  .catch(errExit('Get Import Credentials'));
 
 // Use the temporary credentials to upload a file
 const importUpload = importCredentials
@@ -93,7 +123,7 @@ const importUpload = importCredentials
 
     return new Promise((resolve, reject) => {
       const fileStream = fs.createReadStream(
-        '/testproject1/example.rcpnl'
+        '/path/to/data/dataset1/image1.rcpnl'
       );
       fileStream.on('error', reject);
 
@@ -101,13 +131,13 @@ const importUpload = importCredentials
         {
           Body: fileStream,
           Bucket: bucket,
-          Key: prefix + '/testproject1/example.rcpnl'
+          Key: prefix + '/dataset1/image1.rcpnl'
         },
         (err, data) => err ? reject(err) : resolve(data)
       );
-    });
-  })
-  .then(printRet('Upload file'));
+    })
+  .then(printRet('Upload file'))
+  .catch(errExit('Upload file'));
 
 // Use the temporary credentials to list the import prefix
 const importContents = Promise.all([importCredentials, importUpload])
@@ -135,14 +165,17 @@ const importContents = Promise.all([importCredentials, importUpload])
     });
 
   })
-  .then(printRet('List Import Bucket'));
+  .then(printRet('List Import Bucket'))
+  .catch(errExit('List Import Bucket'));
 
 // Set the import complete
 const importComplete = Promise.all([import_, importUpload])
   .then(([data]) => {
     return client.updateImport(data['uuid'], {'complete': true});
   })
-  .then(printRet('Set Import Complete'));
+  .then(printRet('Set Import Complete'))
+  .then(justData)
+  .catch(errExit('Set Import Complete'));
 
 // Wait for the import to be processed and have a BFU
 const bfu = Promise.all([import_, importComplete])
@@ -150,8 +183,10 @@ const bfu = Promise.all([import_, importComplete])
     return new Promise((resolve, reject) => {
       const wait_for_a_bfu = () => {
         client.listBFUsInImport(data['uuid'])
+          .then(justData)
           .then(data => {
-            if (data.length > 0 && data[0]['complete'] === true) {
+            if (data.length > 0
+                && data[0]['complete'] === true) {
               resolve(data[0]);
             } else {
               setTimeout(wait_for_a_bfu, 30000);
@@ -160,28 +195,37 @@ const bfu = Promise.all([import_, importComplete])
       };
       wait_for_a_bfu();
     });
-  });
+  })
+  .then(printRet('Wait for BFU'))
+  .catch(errExit('Wait for BFU'));
 
 // Get an image associated with the BFU
 const image = bfu
   .then(data => {
     return client.listImagesInBFU(data['uuid'])
   })
+  .then(justData)
   .then(data => data[0])
-  .then(printRet*('Get Image'));
+  .then(printRet('Get Image'))
+  .catch(errExit('Get Image'));
 
 // Get the image credentials
 const imageCredentials = image
   .then(data => {
     return client.getImageCredentials(data['uuid']);
   })
-  .then(printRet('Get Image Credentials'));
+  .then(printRet('Get Image Credentials'))
+  .then(justData)
+  .catch(errExit('Get Image Credentials'));
 
+// Get the image dimensions
 const imageDimensions = image
   .then(data => {
     return client.getImageDimensions(data['uuid']);
   })
-  .then(printRet('Get Image Dimensions'));
+  .then(printRet('Get Image Dimensions'))
+  .then(justData)
+  .catch(errExit('Get Image Dimensions'));
 ```
 
 #### Render Tile
@@ -191,12 +235,14 @@ test.png.
 ```js
 // Get an image by a known ID
 const imageUuid = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
-const imageDimensions = client.getImageDimensions(imageUuid);
+const imageDimensions = client.getImageDimensions(imageUuid)
+  .then(printRet('Get Image Dimensions'))
+  .catch(errExit('Get Image Dimensions'));
 
 // Render a tile
 const renderedTile = imageDimensions
-  .then(data => {
-    return client.getImageTileRendered(data['image']['uuid'], {
+  .then(response => {
+    return client.getImageTileRendered(response['data']['image_uuid'], {
       x: 0,
       y: 0,
       z: 0,
