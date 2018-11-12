@@ -23,6 +23,13 @@ const printRet = label => response => {
   return response;
 };
 
+// Utility function to print just a title and pass the response along
+const titleRet = label => response => {
+  console.log('=== ' + label + ' ===');
+  console.log();
+  return response;
+}
+
 // Utility function to print error and exit
 const errExit = label => data => {
   console.error('EEE ' + label + ' EEE');
@@ -268,6 +275,56 @@ const renderedTile = imageDimensions
       });
   });
 ```
+
+#### Render an image region
+Get details of an image and then render a given region for the given settings
+to test.png. `outputHeight`, `outputWidth` and `preferHigherResolution` are
+optional. If both `outputHeight` and `outputWidth` are specified those will be
+used to rescale along those axes without regard for maintaining aspect ratio.
+To ensure they have the same aspect ratio as the requested region it is
+possible to specify just one of the two and the other will be calculated
+appropriately.
+
+```js
+// Get an image by a known ID
+const imageUuid = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+const imageDimensions = client.getImageDimensions(imageUuid)
+  .then(printRet('Get Image Dimensions'))
+  .catch(errExit('Get Image Dimensions'));
+
+// Render a region
+const renderedRegion = imageDimensions
+  .then(response => {
+    return client.getImageRegionRendered(response['data']['image_uuid'], {
+      x: 0,
+      y: 0,
+      width: 1000,
+      height: 1000,
+      z: 0,
+      t: 0,
+      channels: [
+        { id: 0, color: 123456, min: 0.05, max: 0.2 },
+        { id: 1, color: 234567, min: 0.05, max: 0.2 }
+      ],
+      outputWidth: 500,
+      outputHeight: 500,
+      preferHigherResolution: false
+    });
+  })
+  .then(body => {
+    const wstream = fs.createWriteStream('test.png');
+    body.on('data', chunk => {
+         wstream.write(chunk);
+      }).on('end', () => {
+         wstream.end();
+      });
+  })
+  .catch(err => {
+    console.error(err);
+  });
+
+```
+
 
 #### Complete New Password Challenge
 If a user is required to change a password on login, this can be used to do so.
