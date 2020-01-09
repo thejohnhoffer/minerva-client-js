@@ -94,7 +94,7 @@ const importUpload = importCredentials
 
     return new Promise((resolve, reject) => {
       const fileStream = fs.createReadStream(
-        '/Users/dpwrussell/Downloads/TestData/minerva/rcpnl/TONSIL-Scan_20160628_093314_01x4x00030.rcpnl'
+        '/Users/john/projects/minerva-client-js/examples/GRID_40X-Scan_20180717_135433_01x1x00008.rcpnl'
       );
       fileStream.on('error', reject);
 
@@ -102,7 +102,7 @@ const importUpload = importCredentials
         {
           Body: fileStream,
           Bucket: bucket,
-          Key: prefix + '/rcpnl/TONSIL-Scan_20160628_093314_01x4x00030.rcpnl'
+          Key: prefix + '/rcpnl/GRID_40X-Scan_20180717_135433_01x1x00008.rcpnl'
         },
         (err, response) => err ? reject(err) : resolve(response)
       );
